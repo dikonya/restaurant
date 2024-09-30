@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Card,
   CardBody,
@@ -10,7 +10,10 @@ import {
   FormLabel,
   FormControl,
   Button,
+  Modal
 } from "react-bootstrap";
+import { Context } from "../../index";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const getStoredReviews = () => {
   const storedReviews = localStorage.getItem("reviews");
@@ -20,16 +23,34 @@ const getStoredReviews = () => {
 const setStoredReviews = (reviews) => {
   localStorage.setItem("reviews", JSON.stringify(reviews));
 };
-
 const Reviews = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const { user } = useContext(Context);
   const [reviews, setReviews] = useState(getStoredReviews);
   const [reviewText, setReviewText] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [editingReviewId, setEditingReviewId] = useState(null);
+  const [showModal, setShowModal] = useState(false); // Состояние для управления видимостью модального окна
 
   useEffect(() => {
     setStoredReviews(reviews);
   }, [reviews]);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setCurrentUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleReviewSubmit = (e) => {
     e.preventDefault();
@@ -47,34 +68,61 @@ const Reviews = () => {
       const newReview = {
         id: reviews.length + 1,
         description: reviewText,
-        img: [], // Загрузка изображений может потребовать другой логики
         name: reviewerName,
+        userId: currentUser.uid,
       };
       setReviews([newReview, ...reviews]);
     }
 
-    // Очистить форму после отправки
     setReviewText("");
     setReviewerName("");
   };
 
   const handleEditReview = (id) => {
     const reviewToEdit = reviews.find((review) => review.id === id);
-    if (reviewToEdit) {
+    if (reviewToEdit && reviewToEdit.userId === currentUser.uid) {
       setReviewText(reviewToEdit.description);
       setReviewerName(reviewToEdit.name);
       setEditingReviewId(id);
+    } else {
+      // Показываем модальное окно, если пользователь не является автором отзыва
+      setShowModal(true);
     }
   };
 
   const handleDeleteReview = (id) => {
-    setReviews((prevReviews) => prevReviews.filter((review) => review.id !== id));
+    const reviewToDelete = reviews.find((review) => review.id === id);
+    if (reviewToDelete && reviewToDelete.userId === currentUser.uid) {
+      setReviews((prevReviews) =>
+        prevReviews.filter((review) => review.id !== id)
+      );
+    } else {
+      // Показываем модальное окно, если пользователь не является автором отзыва
+      setShowModal(true);
+    }
   };
 
   return (
     <div className="reviews-section container">
       <h2 className="text-center mb-5 text-uppercase fw-bold fs-1">Reviews</h2>
-      <Form onSubmit={handleReviewSubmit}>
+      {/* Модальное окно */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Insufficient Rights</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          You do not have sufficient rights to perform this action.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      <Form
+        onSubmit={handleReviewSubmit}
+        style={{ width: "750px", margin: "0 auto" }}
+      >
         <FormGroup className="mb-3">
           <FormLabel htmlFor="reviewText">Your Review:</FormLabel>
           <FormControl
@@ -85,7 +133,6 @@ const Reviews = () => {
             onChange={(e) => setReviewText(e.target.value)}
           />
         </FormGroup>
-
         <FormGroup className="mb-3">
           <FormLabel htmlFor="reviewerName">Your Name:</FormLabel>
           <FormControl

@@ -56,7 +56,7 @@ class Home extends Component {
                     <div>
                         <MenuBtn />
                         <Link to='/contact'>
-                            <button type='button' className='btn btn-outline-light btn-lg text-capitalize mx-2 shadow'>Contact us</button>
+                            <button type='button' className='btn btn-outline-light btn-lg text-capitalize mx-2 shadow'>Reserve a table</button>
                         </Link>
                     </div>
                 </div>

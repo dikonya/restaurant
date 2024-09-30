@@ -168,7 +168,7 @@ class ContactForm extends React.Component {
                     </Form.Group>
 
                     <Button variant="success" type="submit" className='btn btn-lg mt-4' id="submit-btn">
-                        Submit
+                        Reserve
                     </Button>
                 </Form>
 
